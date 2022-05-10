@@ -9,8 +9,11 @@
         character(LEN=2) :: label1,label2,label
         character(LEN=2),allocatable :: element(:) 
         pi=4.d0*DATAN(1.d0)
-        !open(1,file='ben.mol',status='old') !benceno
-        open(1,file='inputH2O.xyz') !agua
+        !open(1,file='inputBEN.xyz') !benzene
+        !open(1,file='inputH2O.xyz') !water
+        !open(1,file='inputCYCLOB.xyz') !cyclobutane
+        !open(1,file='inputDICLORO.xyz') !C1
+        open(1,file='inputTOLUENO.mol') !Cs
         read(1,*)natom
         read(1,*)
         allocate(A(3),M(3),C(natom,3),element(natom))
@@ -28,7 +31,9 @@
         !-----Coordinates Reading----------------------------------------
         do i=1,natom
         read(1,*)element(i),(C(i,j),j=1,3)
+        write(6,*)(C(i,j),j=1,3)
         enddo
+        
         call rotation(C,natom,Ca)
         !MATRIX Ca(i,j,k,l) where i=rotation respect the axe 1:x 2:y 3:z
                                  !j=order of the rotation [1-6]
@@ -59,7 +64,7 @@
                       continue
               endif
 
-              if(diffx .lt. 0.0001 .and. diffx .gt. -0.0001             & 
+              if(diffx .lt. 0.0001 .and. diffx .gt. -0.0001             &
      &              .and.Ca(i,j,p,2).ne.indy)then
               indx=Ca(i,j,p,1)
                if(diffy .gt. 0.0001)then
@@ -99,9 +104,9 @@
         do i=1,natom
         !write(6,*)(Ca(3,1,i,j),j=1,3),element(i)
         enddo
-        !write(6,*)'Rotated by C^6(z) and sorted:'
+        !write(6,*)'Rotated by C^2(z) and sorted:'
         do i=1,natom
-        !write(6,*)(Ca(3,6,i,j),j=1,3),element(i)
+        !write(6,*)(Ca(3,2,i,j),j=1,3),element(i)
         enddo
         !write(6,*)'Rotated by C^2(x) and sorted:'
         do i=1,natom
@@ -111,89 +116,78 @@
         do i=1,natom
         !write(6,*)(Ca(3,2,i,j),j=1,3),element(i)
         enddo
-
-        !----Compare C(i,1,k,l) with C(i,n,k,l)----------------------
-        !Compara todas las filas y escribe el orden de la rotación(n) y
-        !la dirección de la rotación (l). Problema: las escribe varias
-        !veces.
-        open(45,file='axis.dat')
-        r=0
-        do l=1,3     !direction
-        do n=6,2,-1  !axis
-        do i=1,natom !rows
-         subx=Ca(l,1,i,1)-Ca(l,n,i,1)
-         subx=abs(subx)
-         suby=Ca(l,1,i,2)-Ca(l,n,i,2)
-         suby=abs(suby)
-         subz=Ca(l,1,i,3)-Ca(l,n,i,3)
-         subz=abs(subz)
- 
-         if(subx .lt. 0.001 .and. suby .lt. 0.001 .and.                 &
-     &      subz .lt. 0.001)then  
-            r=r+1          
-         
-         endif
-        enddo
-        if(r .eq. natom)then
-          write(45,*)n,l
-        end if
-        
-           r=0
-        enddo
-        enddo
-!A lot of questions: 
-!1. Reads from screen but won't read from file       
-!33      read(5,*,end=12)x,i
-!        goto 33
-        
-!12      continue    
-
-!2. this doesn't work and i don't know why i want to cry        allocate(axis(5))
-!        do i=1,5
-!        read(5,*)axis(i)
-!        enddo
-!        write(6,*)axis(1),axis(2)
-!3. this only works with an external file
-        open(88,file='test.dat')
+        call compare(Ca,natom)
+        open(88,file='count.dat')
+        open(89,file='test.dat')
         n=0
         do while(.true.)
         read(88,*,end=10)
         n=n+1
         enddo
 10      continue
+        write(6,*)n
+!Low symmetry groups----------------------------
+        if(n.eq.0)then
+                call inversion(C,natom,Ia)
+        do i=1,natom
+        write(6,*)
+        enddo
+        r=0
+        do i=1,natom
+        do j=1,natom
+        if(C(i,1).eq.Ia(j,1).and.C(i,2).eq.Ia(j,2).and.C(i,3).eq.       &
+     & Ia(j,3))then
+                r=r+1
+        endif
+        enddo
+        enddo 
+        if(r.gt.2)then
+        write(6,*)'this molecule belongs to the C_i symmetry group'
+        else
 
+        write(6,*)'this molecule belongs to the C_1 symmetry group'    
+        endif
+
+        endif
+        
+!--------------------------------------------------------
+        call planes(C,natom,Pa)
+        write(6,*)'original'       
+        do i=1,natom
+        write(6,*)(C(i,j),j=1,3)       
+        enddo
+        do n=1,3
+        write(6,*)n
+        do i=1,natom
+        write(6,*)(Pa(n,i,j),j=1,3)
+        enddo
+        write(6,*)
+        enddo
+        
         allocate(axis(n),order(n))
         do i=1,n
-                read(5,*)axis(i),order(i)
+                read(89,*)axis(i),order(i)
         enddo
         x=maxval(axis)
-        !do i=1,n
-        !do k=1,n
-        !       if(k.gt.i)then
-        !               if(axis(i).gt.axis(k))then
-        !                   x=axis(i)    
-        !                else
-        !                       continue
-        !               endif
-        !       endif
-        !enddo
         do i=1,n
             if(axis(i).eq.x)then
-                    write(6,*)axis(i),order(i)
+                  !  write(6,*)axis(i),order(i)
             endif
         enddo
 
-        !enddo
 
                
         
 !-----Calling -------------------------------------------------
         call inversion(C,natom,Ia)
         do i=1,natom
-        ! write(6,*)(Ca(1,1,i,j),j=1,3)
-        ! write(6,*)(Ca(2,6,i,j),j=1,3)
-        ! write(6,*)
+         write(6,*)(C(i,j),j=1,3)
+         write(6,*)(Ia(i,j),j=1,3)
+         write(6,*)
         enddo
+
+
+        
         end program
 
         !**************************************************************!
@@ -295,12 +289,11 @@
         real*8, allocatable :: II(:,:)
         integer :: natom,i,j,n,k
         allocate(II(3,3))
+         II=0.d0
          do i=1,natom
          do j=1,3
            if(i.eq.j)then
              II(i,j)=-1.d0
-            else
-             II(i,j)=0.d0
            endif
            acum=0.d0
            do k=1,3
@@ -311,3 +304,41 @@
          enddo
         end subroutine 
 
+        subroutine compare(Ca,natom)
+        !----Compare C(i,1,k,l) with C(i,n,k,l)----------------------
+        !Compara todas las filas y escribe el orden de la rotación(n) y
+        !la dirección
+        implicit none
+        integer :: r,n,l,natom,i
+        real*8,intent(in) :: Ca(3,6,natom,3)
+        real*8 :: subx,suby,subz
+        open(45,file='count.dat')
+        open(46,file='test.dat')
+        r=0
+        do l=1,3     !direction
+        do n=6,2,-1  !axis
+        do i=1,natom !rows
+         subx=Ca(l,1,i,1)-Ca(l,n,i,1)
+         subx=abs(subx)
+         suby=Ca(l,1,i,2)-Ca(l,n,i,2)
+         suby=abs(suby)
+         subz=Ca(l,1,i,3)-Ca(l,n,i,3)
+         subz=abs(subz)
+ 
+         if(subx .lt. 0.001 .and. suby .lt. 0.001 .and.                 &
+     &      subz .lt. 0.001)then  
+            r=r+1          
+         
+         endif
+        enddo
+        if(r .eq. natom)then
+          write(45,*)n,l
+          write(46,*)n,l
+        end if
+        
+           r=0
+        enddo
+        enddo
+        close(45)
+        close(46)
+        end subroutine 
