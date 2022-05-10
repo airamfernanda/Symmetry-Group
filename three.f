@@ -1,16 +1,15 @@
         program symmetry
         implicit none
-        integer :: i,j,natom,n,k,l,p,q,s,r,v,x
-        integer, allocatable :: axis(:),order(:)
+        integer :: i,j,natom,n,k,l,p,q,s,io,nlines
         real*8, allocatable :: A(:),M(:)
-        real*8, allocatable :: C(:,:),Ia(:,:)
+        real*8, allocatable :: C(:,:),Ia(:,:),axis(:)
         real*8, allocatable :: Ca(:,:,:,:),Pa(:,:,:)
-        real*8 :: pi,indx,indy,indz,subx,suby,subz,diffx,diffy
+        real*8 :: pi,indx,indy,indz,subx,suby,subz
         character(LEN=2) :: label1,label2,label
         character(LEN=2),allocatable :: element(:) 
         pi=4.d0*DATAN(1.d0)
-        !open(1,file='ben.mol',status='old') !benceno
-        open(1,file='inputH2O.xyz') !agua
+        !open(1,file='sinputBEN.xyz') !Here you change the input name
+        open(1,file='inputBEN.xyz')
         read(1,*)natom
         read(1,*)
         allocate(A(3),M(3),C(natom,3),element(natom))
@@ -45,9 +44,7 @@
            do p=1,natom
            
         if(p.ge.q)then
-              diffx=indx-Ca(i,j,p,1)
-              diffy=indy-Ca(i,j,p,2)
-              if(diffx .gt. 0.0001)then
+              if(Ca(i,j,p,1).lt.indx)then
                     indx=Ca(i,j,p,1)
                     indy=Ca(i,j,p,2)
                     indz=Ca(i,j,p,3)
@@ -55,22 +52,20 @@
                     s=p
               endif
 
-              if(diffx .lt. -0.0001)then
+              if(Ca(i,j,p,1).gt.indx)then
                       continue
               endif
 
-              if(diffx .lt. 0.0001 .and. diffx .gt. -0.0001             & 
-     &              .and.Ca(i,j,p,2).ne.indy)then
+              if(Ca(i,j,p,1).eq.indx.and.Ca(i,j,p,2).ne.indy)then
               indx=Ca(i,j,p,1)
-               if(diffy .gt. 0.0001)then
+               if(Ca(i,j,p,2).lt.indy)then
                       indy=Ca(i,j,p,2)
                       indz=Ca(i,j,p,3)
                       label=element(p)
                       s=p
                endif
               endif
-              if(diffx .lt. 0.0001 .and. diffx .gt. -0.0001             &
-     &           .and. diffy .lt. 0.0001 .and. diffy .gt. -0.0001)then
+              if(Ca(i,j,p,1).eq.indx.and.Ca(i,j,p,2).eq.indy)then
                       indx=Ca(i,j,p,1)
                       indy=Ca(i,j,p,2)
                       if(Ca(i,j,p,3).lt.indz)then
@@ -95,31 +90,30 @@
         enddo
         enddo
         enddo
-        !write(6,*)'Original matrix sorted:'
+        write(6,*)'Original matrix sorted:'
         do i=1,natom
-        !write(6,*)(Ca(3,1,i,j),j=1,3),element(i)
+        write(6,*)(Ca(3,1,i,j),j=1,3),element(i)
         enddo
-        !write(6,*)'Rotated by C^6(z) and sorted:'
+        write(6,*)'Rotated by C^6(z) and sorted:'
         do i=1,natom
-        !write(6,*)(Ca(3,6,i,j),j=1,3),element(i)
+        write(6,*)(Ca(3,6,i,j),j=1,3),element(i)
         enddo
-        !write(6,*)'Rotated by C^2(x) and sorted:'
+        write(6,*)'Rotated by C^2(x) and sorted:'
         do i=1,natom
-        !write(6,*)(Ca(1,2,i,j),j=1,3),element(i)
+        write(6,*)(Ca(1,2,i,j),j=1,3),element(i)
         enddo
-        !write(6,*)'Rotated by C^2(z) and sorted:'
+        write(6,*)'Rotated by C^2(z) and sorted:'
         do i=1,natom
-        !write(6,*)(Ca(3,2,i,j),j=1,3),element(i)
+        write(6,*)(Ca(3,2,i,j),j=1,3),element(i)
         enddo
 
         !----Compare C(i,1,k,l) with C(i,n,k,l)----------------------
         !Compara todas las filas y escribe el orden de la rotación(n) y
         !la dirección de la rotación (l). Problema: las escribe varias
         !veces.
-        open(45,file='axis.dat')
-        r=0
+        open(2,file='axis.dat') 
         do l=1,3     !direction
-        do n=6,2,-1  !axis
+        do n=6,2     !axis
         do i=1,natom !rows
          subx=Ca(l,1,i,1)-Ca(l,n,i,1)
          subx=abs(subx)
@@ -127,67 +121,46 @@
          suby=abs(suby)
          subz=Ca(l,1,i,3)-Ca(l,n,i,3)
          subz=abs(subz)
- 
-         if(subx .lt. 0.001 .and. suby .lt. 0.001 .and.                 &
-     &      subz .lt. 0.001)then  
-            r=r+1          
          
-         endif
+        if(Ca(l,n,i,1).eq.0.d0.or.Ca(l,n,i,2).eq.0.d0.or.               &
+     &  Ca(l,n,i,3).eq.0.d0)then
+               go to 500 
+        elseif(subx.lt.0.0001.and.suby.lt.0.00001.and.                  &
+     &   subz.lt.0001)then
+           write(2,*)n,l
+           go to 501
+         
+        endif
+500     continue
         enddo
-        if(r .eq. natom)then
-          write(45,*)n,l
-        end if
-        
-           r=0
+501     continue !This is a possible source of error, if it finds ONE
+                 !row equal to the original (in the same spot since they
+                 !are sorted) it won't check the others.
         enddo
         enddo
-!A lot of questions: 
-!1. Reads from screen but won't read from file       
-!33      read(5,*,end=12)x,i
-!        goto 33
-        
-!12      continue    
 
-!2. this doesn't work and i don't know why i want to cry        allocate(axis(5))
-!        do i=1,5
-!        read(5,*)axis(i)
-!        enddo
-!        write(6,*)axis(1),axis(2)
-!3. this only works with an external file
-        open(88,file='test.dat')
-        n=0
-        do while(.true.)
-        read(88,*,end=10)
-        n=n+1
-        enddo
-10      continue
-
-        allocate(axis(n),order(n))
-        do i=1,n
-                read(5,*)axis(i),order(i)
-        enddo
-        x=maxval(axis)
-        !do i=1,n
-        !do k=1,n
-        !       if(k.gt.i)then
-        !               if(axis(i).gt.axis(k))then
-        !                   x=axis(i)    
-        !                else
-        !                       continue
-        !               endif
-        !       endif
+        
+        !nlines=0
+        !do
+        !read(1,*,end=10)
+        !  nlines=nlines+1
         !enddo
-        do i=1,n
-            if(axis(i).eq.x)then
-                    write(6,*)axis(i),order(i)
-            endif
-        enddo
+!10      continue
+        ! close(1)
+        !write(6,*)nlines
+        !ido while(.not.eof(1)) 
+        !   read(1,*)x 
+        !       n=n+1
+       ! enddo
+        !write(6,*)n
+        !rewind(1)
+       ! allocate(axis(2))
+       ! do i=1,2
+       ! read(2,*)axis(i),n
+       ! enddo
+        !write(6,*)(axis(i),i=1,2)
 
-        !enddo
-
-               
-        
-!-----Calling -------------------------------------------------
+        !-----Calling -------------------------------------------------
         call inversion(C,natom,Ia)
         do i=1,natom
         ! write(6,*)(Ca(1,1,i,j),j=1,3)

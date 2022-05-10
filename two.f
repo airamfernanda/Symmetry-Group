@@ -1,8 +1,9 @@
         program symmetry
         implicit none
-        integer :: i,j,natom,n,k,l,p,q,s,io,nlines
+        integer :: i,j,natom,n,k,l,p,q,s,io,nlines,x
+        integer, allocatable :: axis(:)
         real*8, allocatable :: A(:),M(:)
-        real*8, allocatable :: C(:,:),Ia(:,:),axis(:)
+        real*8, allocatable :: C(:,:),Ia(:,:)
         real*8, allocatable :: Ca(:,:,:,:),Pa(:,:,:)
         real*8 :: pi,indx,indy,indz,subx,suby,subz
         character(LEN=2) :: label1,label2,label
@@ -94,26 +95,26 @@
         do i=1,natom
         write(6,*)(Ca(3,1,i,j),j=1,3),element(i)
         enddo
-        write(6,*)'Rotated by C^6(z) and sorted:'
-        do i=1,natom
-        write(6,*)(Ca(3,6,i,j),j=1,3),element(i)
-        enddo
         write(6,*)'Rotated by C^2(x) and sorted:'
         do i=1,natom
         write(6,*)(Ca(1,2,i,j),j=1,3),element(i)
         enddo
-        write(6,*)'Rotated by C^2(z) and sorted:'
+        write(6,*)'Rotated by C^(y) and sorted:'
         do i=1,natom
-        write(6,*)(Ca(3,2,i,j),j=1,3),element(i)
+        write(6,*)(Ca(2,2,i,j),j=1,3),element(i)
+        enddo
+        write(6,*)'Rotated by C^6(z) and sorted:'
+        do i=1,natom
+        write(6,*)(Ca(3,6,i,j),j=1,3),element(i)
         enddo
 
         !----Compare C(i,1,k,l) with C(i,n,k,l)----------------------
         !Compara todas las filas y escribe el orden de la rotación(n) y
         !la dirección de la rotación (l). Problema: las escribe varias
         !veces.
-        open(2,file='axis.dat') 
+
         do l=1,3     !direction
-        do n=6,2     !axis
+        do n=6,2,-1  !axis
         do i=1,natom !rows
          subx=Ca(l,1,i,1)-Ca(l,n,i,1)
          subx=abs(subx)
@@ -121,11 +122,9 @@
          suby=abs(suby)
          subz=Ca(l,1,i,3)-Ca(l,n,i,3)
          subz=abs(subz)
-         
-        if(Ca(l,n,i,1).eq.0.d0.or.Ca(l,n,i,2).eq.0.d0.or.               &
-     &  Ca(l,n,i,3).eq.0.d0)then
-               go to 500 
-        elseif(subx.lt.0.0001.and.suby.lt.0.00001.and.                  &
+         if(Ca(l,n,i,1).eq.0.d0.or.Ca(l,n,i,2).eq.0.d0)then
+             !   goto 500
+         elseif(subx.lt.000001.and.suby.lt.0.00001.and.                 &
      &   subz.lt.0001)then
            write(6,*)n,l
            go to 501
@@ -134,32 +133,9 @@
 500     continue
         enddo
 501     continue !This is a possible source of error, if it finds ONE
-                 !row equal to the original (in the same spot since they
                  !are sorted) it won't check the others.
         enddo
         enddo
-
-        
-        !nlines=0
-        !do
-        !read(1,*,end=10)
-        !  nlines=nlines+1
-        !enddo
-!10      continue
-        ! close(1)
-        !write(6,*)nlines
-        !ido while(.not.eof(1)) 
-        !   read(1,*)x 
-        !       n=n+1
-       ! enddo
-        !write(6,*)n
-        !rewind(1)
-        allocate(axis(2))
-        do i=1,2
-        read(2,*)axis(i),n
-        enddo
-        !write(6,*)(axis(i),i=1,2)
-
         !-----Calling -------------------------------------------------
         call inversion(C,natom,Ia)
         do i=1,natom
